@@ -1,6 +1,8 @@
 package com.baidu.ctr;
 
 import java.io.IOException;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
@@ -10,7 +12,9 @@ import org.apache.commons.io.FilenameUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
+import org.apache.hadoop.fs.FileUtil;
 import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.fs.permission.FsPermission;
 import org.apache.hadoop.security.UserGroupInformation;
 import org.apache.hadoop.util.ClassUtil;
 import org.apache.hadoop.yarn.api.ApplicationConstants;
@@ -34,12 +38,19 @@ import org.apache.log4j.Logger;
 
 public class Client {
     static private Logger logger = Logger.getLogger(Client.class);
+    private static final FsPermission CTR_DIR_PERM =
+            FsPermission.createImmutable((short) 448);
+    // Owner rw (600)
+    private static final FsPermission CTR_FILE_PERM =
+            FsPermission.createImmutable((short) 384);
+    private static Configuration conf = new Configuration();
 
     public static void main(String[] args) throws Exception {
-        Configuration conf = new Configuration();
         if (UserGroupInformation.isSecurityEnabled()) {
             throw new Exception("SecurityEnabled , not support");
         }
+
+        Client client = new Client();
 
         // 1. create and start a yarnClient
         YarnClient yarnClient = YarnClient.createYarnClient();
@@ -72,6 +83,10 @@ public class Client {
         monitorApplicationReport(yarnClient, appId);
     }
 
+    private static Path getAppDir(FileSystem fs, ApplicationId appId) {
+        return new Path(fs.getHomeDirectory(), ".ctr/" + appId.toString());
+    }
+
     private static ContainerLaunchContext createAMContainerLanunchContext(
             Configuration conf, ApplicationId appId) throws IOException {
         //Add this jar file to hdfs
@@ -81,8 +96,13 @@ public class Client {
         String thisJarBaseName = FilenameUtils.getName(thisJar);
         logger.info("thisJar is " + thisJar);
 
-        addToLocalResources(fs, thisJar, thisJarBaseName, appId.toString(),
-                localResources);
+        // Directory to store temporary application resources
+        Path appDir = getAppDir(fs, appId);
+
+        FileSystem.mkdirs(fs, appDir, CTR_DIR_PERM);
+
+        // Setup the LocalResources for the appmaster and containers
+        addToLocalResources(fs, thisJar, appDir, localResources);
 
         //Set CLASSPATH environment
         Map<String, String> env = new HashMap<String, String>();
@@ -124,20 +144,20 @@ public class Client {
     }
 
     private static void addToLocalResources(FileSystem fs, String fileSrcPath,
-                                            String fileDstPath, String appId,
+                                            Path dst,
                                             Map<String, LocalResource> localResources)
             throws IllegalArgumentException, IOException {
-        String suffix = "ctr" + "/" + appId + "/" + fileDstPath;
-        Path dst = new Path(fs.getHomeDirectory(), suffix);
         logger.info("hdfs copyFromLocalFile " + fileSrcPath + " =>" + dst);
         fs.copyFromLocalFile(new Path(fileSrcPath), dst);
+
+//        fs.copyFromLocalFile(new Path("./ctr.tar.gz"), appDir);
         FileStatus scFileStatus = fs.getFileStatus(dst);
         LocalResource scRsrc = LocalResource.newInstance(
                 ConverterUtils.getYarnUrlFromPath(dst), LocalResourceType.FILE,
                 LocalResourceVisibility.APPLICATION, scFileStatus.getLen(),
                 scFileStatus.getModificationTime());
 
-        localResources.put(fileDstPath, scRsrc);
+        localResources.put(dst.toString(), scRsrc);
     }
 
     private static void monitorApplicationReport(YarnClient yarnClient, ApplicationId appId) throws YarnException, IOException {
