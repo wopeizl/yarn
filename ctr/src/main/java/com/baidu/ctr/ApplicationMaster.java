@@ -55,9 +55,6 @@ public class ApplicationMaster {
 	}
 
 	private class RMCallbackHandler implements AMRMClientAsync.CallbackHandler {
-		
-		
-
 		public void onContainersCompleted(List<ContainerStatus> statuses) {
 			for (ContainerStatus status : statuses) {
 				LOG.info("Container Completed: " + status.getContainerId().toString() 
@@ -85,7 +82,6 @@ public class ApplicationMaster {
 		}
 
 		public void onNodesUpdated(List<NodeReport> updatedNodes) {
-
 		}
 
 		public float getProgress() {
@@ -96,52 +92,35 @@ public class ApplicationMaster {
 		public void onError(Throwable e) {
 			amRMClient.stop();
 		}
-
 	}
 
 	private class NMCallbackHandler implements NMClientAsync.CallbackHandler {
-
 		public void onContainerStarted(ContainerId containerId,
 				Map<String, ByteBuffer> allServiceResponse) {
 			LOG.info("Container Stared " + containerId.toString());
-
 		}
 
 		public void onContainerStatusReceived(ContainerId containerId,
 				ContainerStatus containerStatus) {
-
 		}
 
 		public void onContainerStopped(ContainerId containerId) {
-			// TODO Auto-generated method stub
-
 		}
 
 		public void onStartContainerError(ContainerId containerId, Throwable t) {
-			// TODO Auto-generated method stub
-
 		}
 
 		public void onGetContainerStatusError(ContainerId containerId,
 				Throwable t) {
-			// TODO Auto-generated method stub
-
 		}
 
 		public void onStopContainerError(ContainerId containerId, Throwable t) {
-			// TODO Auto-generated method stub
-
 		}
-
 	}
 
-
-	
-	
-	@SuppressWarnings("rawtypes")
-	AMRMClientAsync amRMClient = null;
+	@SuppressWarnings("rawtypes")	
+    AMRMClientAsync amRMClient = null;
 	NMClientAsyncImpl amNMClient = null;
-	
 	AtomicInteger numTotalContainers = new AtomicInteger(1);
 	AtomicInteger numCompletedConatiners = new AtomicInteger(0);
 	ExecutorService exeService = Executors.newCachedThreadPool();
@@ -149,14 +128,12 @@ public class ApplicationMaster {
 	
 	private static final Log LOG = LogFactory.getLog(ApplicationMaster.class);
 
-	@SuppressWarnings("unchecked")
-	void run() throws YarnException, IOException {
-
+	@SuppressWarnings("unchecked")	
+    void run() throws YarnException, IOException {
 		logInformation();
 		Configuration conf = new Configuration();
 
 		// 1. create amRMClient
-		
 		amRMClient = AMRMClientAsync.createAMRMClientAsync(
 				1000, new RMCallbackHandler());
 		amRMClient.init(conf);
@@ -204,9 +181,6 @@ public class ApplicationMaster {
 	}
 
 	void logInformation() {
-		System.out.println("This is System.out.println");
-		System.err.println("This is System.err.println");
-
 		String containerIdStr = System
 				.getenv(ApplicationConstants.Environment.CONTAINER_ID.name());
 

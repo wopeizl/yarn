@@ -57,12 +57,10 @@ public class Client {
         Resource capability = Resource.newInstance(1000, 1);
         app.getApplicationSubmissionContext().setResource(capability);
 
-        // 4. Set the app's localResource env and command by
-        // ContainerLaunchContext
+        // 4. Set the app's localResource env and command by ContainerLaunchContext
         ContainerLaunchContext amContainer = createAMContainerLanunchContext(
                 conf, app.getApplicationSubmissionContext().getApplicationId());
         app.getApplicationSubmissionContext().setAMContainerSpec(amContainer);
-
 
         // 5. submit to queue default
         app.getApplicationSubmissionContext().setPriority(
@@ -129,7 +127,7 @@ public class Client {
                                             String fileDstPath, String appId,
                                             Map<String, LocalResource> localResources)
             throws IllegalArgumentException, IOException {
-        String suffix = "mytest" + "/" + appId + "/" + fileDstPath;
+        String suffix = "ctr" + "/" + appId + "/" + fileDstPath;
         Path dst = new Path(fs.getHomeDirectory(), suffix);
         logger.info("hdfs copyFromLocalFile " + fileSrcPath + " =>" + dst);
         fs.copyFromLocalFile(new Path(fileSrcPath), dst);
