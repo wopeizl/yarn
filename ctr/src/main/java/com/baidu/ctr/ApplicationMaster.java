@@ -47,7 +47,7 @@ public class ApplicationMaster {
 		public void run() {
 			List<String> commands = new LinkedList<String>();
 			//commands.add("sleep " + sleepSeconds.addAndGet(1));
-			commands.add(" /tmp/yarn.sh ");
+			commands.add(" ls ");
 			ContainerLaunchContext ctx = ContainerLaunchContext.newInstance(
 					null, null, commands, null, null, null);
 			amNMClient.startContainerAsync(container, ctx);

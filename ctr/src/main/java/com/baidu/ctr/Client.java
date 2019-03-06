@@ -35,14 +35,13 @@ public class Client {
     // Owner rw (600)
     private static final FsPermission CTR_FILE_PERM =
             FsPermission.createImmutable((short) 384);
-    private static Configuration conf = new Configuration();
 
     public static void main(String[] args) throws Exception {
         if (UserGroupInformation.isSecurityEnabled()) {
             throw new Exception("SecurityEnabled , not support");
         }
 
-        Client client = new Client();
+        Configuration conf = new Configuration();
 
         // 1. create and start a yarnClient
         YarnClient yarnClient = YarnClient.createYarnClient();
@@ -75,10 +74,6 @@ public class Client {
         monitorApplicationReport(yarnClient, appId);
     }
 
-    private static Path getAppDir(FileSystem fs, ApplicationId appId) {
-        return new Path(fs.getHomeDirectory(), appId.toString());
-    }
-
     private static ContainerLaunchContext createAMContainerLanunchContext(
             Configuration conf, ApplicationId appId) throws IOException {
         //Add this jar file to hdfs
@@ -88,13 +83,9 @@ public class Client {
         String thisJarBaseName = FilenameUtils.getName(thisJar);
         logger.info("thisJar is " + thisJar);
 
-        // Directory to store temporary application resources
-        Path appDir = getAppDir(fs, appId);
-
-        FileSystem.mkdirs(fs, appDir, CTR_DIR_PERM);
-
         // Setup the LocalResources for the appmaster and containers
-        addToLocalResources(fs, thisJar, appDir, localResources);
+        addToLocalResources(fs, thisJar, thisJarBaseName, appId.toString(),
+                localResources);
 
         //Set CLASSPATH environment
         Map<String, String> env = new HashMap<String, String>();
@@ -136,20 +127,20 @@ public class Client {
     }
 
     private static void addToLocalResources(FileSystem fs, String fileSrcPath,
-                                            Path dst,
+                                            String fileDstPath, String appId,
                                             Map<String, LocalResource> localResources)
             throws IllegalArgumentException, IOException {
+        String suffix = appId + "/" + fileDstPath;
+        Path dst = new Path(fs.getHomeDirectory(), suffix);
         logger.info("hdfs copyFromLocalFile " + fileSrcPath + " =>" + dst);
         fs.copyFromLocalFile(new Path(fileSrcPath), dst);
-
-//        fs.copyFromLocalFile(new Path("./ctr.tar.gz"), appDir);
         FileStatus scFileStatus = fs.getFileStatus(dst);
         LocalResource scRsrc = LocalResource.newInstance(
                 ConverterUtils.getYarnUrlFromPath(dst), LocalResourceType.FILE,
                 LocalResourceVisibility.APPLICATION, scFileStatus.getLen(),
                 scFileStatus.getModificationTime());
 
-        localResources.put(dst.toString(), scRsrc);
+        localResources.put(fileDstPath, scRsrc);
     }
 
     private static void monitorApplicationReport(YarnClient yarnClient, ApplicationId appId) throws YarnException, IOException {
