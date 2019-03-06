@@ -20,15 +20,7 @@ import org.apache.hadoop.util.ClassUtil;
 import org.apache.hadoop.yarn.api.ApplicationConstants;
 import org.apache.hadoop.yarn.api.ApplicationConstants.Environment;
 import org.apache.hadoop.yarn.api.protocolrecords.GetNewApplicationResponse;
-import org.apache.hadoop.yarn.api.records.ApplicationId;
-import org.apache.hadoop.yarn.api.records.ApplicationReport;
-import org.apache.hadoop.yarn.api.records.ApplicationSubmissionContext;
-import org.apache.hadoop.yarn.api.records.ContainerLaunchContext;
-import org.apache.hadoop.yarn.api.records.LocalResource;
-import org.apache.hadoop.yarn.api.records.LocalResourceType;
-import org.apache.hadoop.yarn.api.records.LocalResourceVisibility;
-import org.apache.hadoop.yarn.api.records.Priority;
-import org.apache.hadoop.yarn.api.records.Resource;
+import org.apache.hadoop.yarn.api.records.*;
 import org.apache.hadoop.yarn.client.api.YarnClient;
 import org.apache.hadoop.yarn.client.api.YarnClientApplication;
 import org.apache.hadoop.yarn.conf.YarnConfiguration;
@@ -84,7 +76,7 @@ public class Client {
     }
 
     private static Path getAppDir(FileSystem fs, ApplicationId appId) {
-        return new Path(fs.getHomeDirectory(), ".ctr/" + appId.toString());
+        return new Path(fs.getHomeDirectory(), appId.toString());
     }
 
     private static ContainerLaunchContext createAMContainerLanunchContext(
@@ -161,25 +153,31 @@ public class Client {
     }
 
     private static void monitorApplicationReport(YarnClient yarnClient, ApplicationId appId) throws YarnException, IOException {
-        while (true) {
+        ApplicationReport appReport = yarnClient.getApplicationReport(appId);
+        YarnApplicationState appState = appReport.getYarnApplicationState();
+        while (appState != YarnApplicationState.FINISHED
+                && appState != YarnApplicationState.KILLED
+                && appState != YarnApplicationState.FAILED) {
             try {
                 Thread.sleep(5 * 1000);
             } catch (InterruptedException e) {
 
             }
-            ApplicationReport report = yarnClient.getApplicationReport(appId);
-            logger.info("Got application report " + ", clientToAMToken="
-                    + report.getClientToAMToken() + ", appDiagnostics="
-                    + report.getDiagnostics() + ", appMasterHost="
-                    + report.getHost() + ", appQueue=" + report.getQueue()
-                    + ", appMasterRpcPort=" + report.getRpcPort()
-                    + ", appStartTime=" + report.getStartTime()
-                    + ", yarnAppState="
-                    + report.getYarnApplicationState().toString()
-                    + ", distributedFinalState="
-                    + report.getFinalApplicationStatus().toString()
-                    + ", appTrackingUrl=" + report.getTrackingUrl()
-                    + ", appUser=" + report.getUser());
+            appReport = yarnClient.getApplicationReport(appId);
+            appState = appReport.getYarnApplicationState();
         }
+        ApplicationReport report = yarnClient.getApplicationReport(appId);
+        logger.info("Got application report " + ", clientToAMToken="
+                + report.getClientToAMToken() + ", appDiagnostics="
+                + report.getDiagnostics() + ", appMasterHost="
+                + report.getHost() + ", appQueue=" + report.getQueue()
+                + ", appMasterRpcPort=" + report.getRpcPort()
+                + ", appStartTime=" + report.getStartTime()
+                + ", yarnAppState="
+                + report.getYarnApplicationState().toString()
+                + ", distributedFinalState="
+                + report.getFinalApplicationStatus().toString()
+                + ", appTrackingUrl=" + report.getTrackingUrl()
+                + ", appUser=" + report.getUser());
     }
 }
